@@ -1,0 +1,11 @@
+[project]
+name = "ipcr-py"
+version = "0.1.0"
+description = "In-silico PCR using blast to look for the primers"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
+
+[build-system]
+requires = ["uv_build"]
+build-backend = "uv_build"
