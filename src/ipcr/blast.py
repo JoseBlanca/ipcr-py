@@ -2,6 +2,9 @@ from pathlib import Path
 from enum import Enum
 from subprocess import run, SubprocessError
 from shutil import which
+from typing import Protocol, Iterable
+from tempfile import NamedTemporaryFile
+from collections import defaultdict
 
 MAKEBLAST_BIN = "makeblastdb"
 
@@ -9,6 +12,13 @@ MAKEBLAST_BIN = "makeblastdb"
 class BlastDbType(Enum):
     NUCL = 1
     PROT = 2
+
+
+class BlastProgram(Enum):
+    BLASTN = 1
+    BLASTP = 2
+    BLASTX = 3
+    TBLASTN = 4
 
 
 def prepare_blast(
@@ -54,3 +64,103 @@ def prepare_blast(
             raise
 
     return {"db_path": out_base_path}
+
+
+TABBLAST_OUTFMT = "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qframe sframe"
+
+
+class Seq(Protocol):
+    name: str
+    seq: str
+
+
+def create_fasta_file(seqs, fasta_fhand):
+    for seq in seqs:
+        fasta_fhand.write(f">{seq.name}\n{seq.seq}\n")
+
+    fasta_fhand.flush()
+
+
+def blast_seqs(
+    seqs: Iterable[Seq],
+    db_path: Path,
+    blast_program: BlastProgram,
+    tmp_dir: Path | None = None,
+    evalue_threshold=1e-5,
+):
+    if blast_program == BlastProgram.BLASTN:
+        blast_cmd = "blastn"
+    elif blast_program == BlastProgram.BLASTP:
+        blast_cmd = "blastp"
+    elif blast_program == BlastProgram.BLASTX:
+        blast_cmd = "blastx"
+    elif blast_program == BlastProgram.TBLASTN:
+        blast_cmd = "tblastn"
+
+    with NamedTemporaryFile(suffix=".fasta", dir=tmp_dir, mode="wt") as tmp_fasta:
+        create_fasta_file(seqs, tmp_fasta)
+
+        cmd = [
+            blast_cmd,
+            "-query",
+            tmp_fasta.name,
+            "-db",
+            str(db_path),
+            "-evalue",
+            str(evalue_threshold),
+            "-outfmt",
+            TABBLAST_OUTFMT,
+        ]
+        try:
+            process = run(cmd, check=False, capture_output=True)
+        except SubprocessError:
+            if which(blast_cmd) is None:
+                msg = f"{blast_cmd} is not installed in your system and it is required to create the blast database"
+                raise RuntimeError(msg)
+            else:
+                raise
+    lines = process.stdout.decode().splitlines()
+    result = defaultdict(dict)
+    for line in lines:
+        items = line.strip().split()
+        if len(items) == 14:
+            (
+                query,
+                subject,
+                identity,
+                ali_len,
+                mis,
+                gap_opens,
+                query_start,
+                query_end,
+                subject_start,
+                subject_end,
+                expect,
+                score,
+                qstrand,
+                sstrand,
+            ) = items
+        else:
+            raise RuntimeError("Wrong blast output")
+
+        hsp = {
+            "identity": float(identity),
+            "ali_len": int(ali_len),
+            "mis": int(mis),
+            "gap_opens": int(gap_opens),
+            "query_start": int(query_start),
+            "query_end": int(query_end),
+            "subject_start": int(subject_start),
+            "subject_end": int(subject_end),
+            "evalue": float(expect),
+            "score": float(score),
+            "query_strand": int(qstrand),
+            "subject_strand": int(sstrand),
+        }
+        try:
+            hsps = result[query][subject]
+        except KeyError:
+            hsps = []
+            result[query][subject] = hsps
+        hsps.append(hsp)
+    return result
