@@ -104,6 +104,7 @@ def blast_seqs(
     blast_program: BlastProgram,
     tmp_dir: Path | None = None,
     evalue_threshold=1e-5,
+    short=False,
 ):
     if blast_program == BlastProgram.BLASTN:
         blast_cmd = "blastn"
@@ -128,6 +129,15 @@ def blast_seqs(
             "-outfmt",
             TABBLAST_OUTFMT,
         ]
+
+        if short:
+            if blast_program == BlastProgram.BLASTN:
+                cmd.extend(["-task", "blastn-short"])
+            else:
+                raise ValueError(
+                    f"short option can only be used with blastn, but blast program is: {blast_cmd}"
+                )
+
         try:
             process = run(cmd, check=False, capture_output=True)
         except SubprocessError:
