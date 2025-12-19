@@ -18,4 +18,7 @@ def test_prepare_blast_db():
             seq_fasta, db_type=BlastDbType.NUCL, out_db_dir=Path(temp_dir)
         )["db_path"]
         res = blast_seqs([seq], db_path=db_path, blast_program=BlastProgram.BLASTN)
-        print(res)
+        hsps = res["primer1"]["NM_000144.5"]
+        assert len(hsps) == 1
+        hsp = hsps[0]
+        assert hsp.mismatch == 0

@@ -5,6 +5,7 @@ from shutil import which
 from typing import Protocol, Iterable
 from tempfile import NamedTemporaryFile
 from collections import defaultdict
+from dataclasses import dataclass
 
 MAKEBLAST_BIN = "makeblastdb"
 
@@ -72,6 +73,22 @@ TABBLAST_OUTFMT = "6 qseqid sseqid pident length mismatch gapopen qstart qend ss
 class Seq(Protocol):
     name: str
     seq: str
+
+
+@dataclass
+class HSP:
+    identity: float
+    ali_len: int
+    mismatch: int
+    gap_opens: int
+    query_start: int
+    query_end: int
+    subject_start: int
+    subject_end: int
+    evalue: float
+    score: float
+    query_strand: int
+    subject_strand: int
 
 
 def create_fasta_file(seqs, fasta_fhand):
@@ -143,20 +160,21 @@ def blast_seqs(
         else:
             raise RuntimeError("Wrong blast output")
 
-        hsp = {
-            "identity": float(identity),
-            "ali_len": int(ali_len),
-            "mis": int(mis),
-            "gap_opens": int(gap_opens),
-            "query_start": int(query_start),
-            "query_end": int(query_end),
-            "subject_start": int(subject_start),
-            "subject_end": int(subject_end),
-            "evalue": float(expect),
-            "score": float(score),
-            "query_strand": int(qstrand),
-            "subject_strand": int(sstrand),
-        }
+        hsp = HSP(
+            identity=float(identity),
+            ali_len=int(ali_len),
+            mismatch=int(mis),
+            gap_opens=int(gap_opens),
+            query_start=int(query_start),
+            query_end=int(query_end),
+            subject_start=int(subject_start),
+            subject_end=int(subject_end),
+            evalue=float(expect),
+            score=float(score),
+            query_strand=int(qstrand),
+            subject_strand=int(sstrand),
+        )
+
         try:
             hsps = result[query][subject]
         except KeyError:
@@ -164,3 +182,25 @@ def blast_seqs(
             result[query][subject] = hsps
         hsps.append(hsp)
     return result
+
+
+def filter_hsps_by_align_len(hsps, len_threshold=None):
+    if len_threshold is None:
+        return hsps
+
+    filtered_hsps = []
+    for hsp in hsps:
+        if hsp["ali_len"] >= len_threshold:
+            filtered_hsps.append(hsp)
+    return filtered_hsps
+
+
+def filter_hsps_by_identity(hsps, threshold=None):
+    if threshold is None:
+        return hsps
+
+    filtered_hsps = []
+    for hsp in hsps:
+        if hsp["identity"] >= threshold:
+            filtered_hsps.append(hsp)
+    return filtered_hsps
