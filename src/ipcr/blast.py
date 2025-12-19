@@ -194,23 +194,34 @@ def blast_seqs(
     return result
 
 
-def filter_hsps_by_align_len(hsps, len_threshold=None):
-    if len_threshold is None:
+def filter_hsps_by_align_len(hsps, min_len=None):
+    if min_len is None:
         return hsps
 
     filtered_hsps = []
     for hsp in hsps:
-        if hsp["ali_len"] >= len_threshold:
+        if hsp.ali_len >= min_len:
             filtered_hsps.append(hsp)
     return filtered_hsps
 
 
-def filter_hsps_by_identity(hsps, threshold=None):
-    if threshold is None:
+def filter_hsps_by_identity(hsps, min_identity=None):
+    if min_identity is None:
         return hsps
 
     filtered_hsps = []
     for hsp in hsps:
-        if hsp["identity"] >= threshold:
+        if hsp.identity >= min_identity:
+            filtered_hsps.append(hsp)
+    return filtered_hsps
+
+
+def filter_hsps_by_mismatch(hsps, max_mismatch=None):
+    if max_mismatch is None:
+        return hsps
+
+    filtered_hsps = []
+    for hsp in hsps:
+        if hsp.mismatch <= max_mismatch:
             filtered_hsps.append(hsp)
     return filtered_hsps
