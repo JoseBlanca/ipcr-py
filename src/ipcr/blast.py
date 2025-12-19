@@ -2,7 +2,7 @@ from pathlib import Path
 from enum import Enum
 from subprocess import run, SubprocessError
 from shutil import which
-from typing import Protocol, Iterable
+from typing import Iterable
 from tempfile import NamedTemporaryFile
 from collections import defaultdict
 from dataclasses import dataclass
@@ -70,7 +70,8 @@ def prepare_blast(
 TABBLAST_OUTFMT = "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qframe sframe"
 
 
-class Seq(Protocol):
+@dataclass
+class Seq:
     name: str
     seq: str
 

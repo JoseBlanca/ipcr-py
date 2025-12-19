@@ -1,6 +1,5 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from collections import namedtuple
 
 from ipcr.blast import (
     prepare_blast,
@@ -11,12 +10,11 @@ from ipcr.blast import (
     filter_hsps_by_align_len,
     filter_hsps_by_identity,
     filter_hsps_by_mismatch,
+    Seq,
 )
 
 TEST_DIR = Path(__file__).parent
 TEST_DATA_DIR = TEST_DIR / "data"
-
-Seq = namedtuple("Seq", ["name", "seq"])
 
 
 def test_prepare_blast_db():
